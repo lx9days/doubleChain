@@ -1,0 +1,7 @@
+(function(root){
+const initial=()=>({mode:'stage',keyword:'',stages:[],regions:[],from:'',to:'',missing:false,selected:null,metric:'patents'});
+function rows(data,s,omit){const cm=new Map(data.companies.map(c=>[c.company_id,c])),sm=new Map(data.patent_stage.map(e=>[e.patent_id,e.stage_id]));const seen=new Set();return data.patents.filter(p=>{const key=p.application_number||p.patent_id;if(seen.has(key))return false;seen.add(key);const cs=p.company_ids.map(id=>cm.get(id)).filter(Boolean);return (!s.keyword||[p.title,p.application_number,...cs.map(c=>c.name)].join(' ').toLowerCase().includes(s.keyword.toLowerCase()))&&(omit==='stage'||!s.stages.length||s.stages.includes(sm.get(p.patent_id)||'unclassified'))&&(omit==='region'||!s.regions.length||cs.some(c=>s.regions.includes(NEV.region(c.address||'').name)))&&(omit==='time'||(s.missing?!p.application_date:(!s.from||p.application_date>=s.from)&&(!s.to||(p.application_date&&p.application_date<=s.to))));});}
+const count=(ps,metric)=>metric==='companies'?new Set(ps.flatMap(p=>p.company_ids)).size:ps.length;
+function years(ps){const counts={};ps.forEach(p=>{if(p.application_date){const y=+p.application_date.slice(0,4);counts[y]=(counts[y]||0)+1;}});const ys=Object.keys(counts).map(Number);return ys.length?Array.from({length:Math.max(...ys)-Math.min(...ys)+1},(_,i)=>({year:Math.min(...ys)+i,count:counts[Math.min(...ys)+i]||0})):[];}
+const api={initial,rows,count,years};if(typeof module!=='undefined')module.exports=api;else root.Analysis=api;
+})(globalThis);

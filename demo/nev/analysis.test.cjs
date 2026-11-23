@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');global.NEV=require('./model.js');const A=require('./analysis.js'),data=NEV.exclusive(require('../../data-derived/nev/demo-listed-300-v1/demo-data.json'));
+test('300 unique applications and OR/AND filters',()=>{const s=A.initial();assert.equal(A.rows(data,s).length,300);s.stages=['materials','systems'];assert.equal(A.rows(data,s).length,100);s.keyword='不存在的关键词';assert.equal(A.rows(data,s).length,0);});
+test('deduplication, mode persistence and facet background',()=>{const s=A.initial();s.stages=['materials'];assert.equal(A.rows({...data,patents:[...data.patents,...data.patents]},s).length,50);const a=A.rows(data,s);s.mode='time';assert.deepEqual(A.rows(data,s),a);assert.equal(A.rows(data,s,'stage').length,300);assert.equal(A.count(a,'patents'),50);});
+test('zero filled years',()=>assert.deepEqual(A.years([{application_date:'2020-01-01'},{application_date:'2022-01-01'}]).map(x=>x.count),[1,0,1]));

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>双链 · invest 全结果横向画布</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;background:#f3f5f8;color:#223248;font:14px 'Microsoft YaHei',sans-serif}
+    header{background:#142b40;color:#fff;padding:22px 28px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+    h1{font-size:24px;margin:0}
+    h2{font-size:18px;margin:0 0 14px}
+    a{color:inherit}
+    button,input{font:inherit}
+    button{cursor:pointer;border:1px solid #cbd6df;background:#fff;color:#244058;border-radius:6px;padding:9px 13px}
+    button:hover{background:#eaf3f8}
+    button:disabled{opacity:.45;cursor:default}
+    input{width:100%;padding:10px;border:1px solid #cbd6df;border-radius:6px;background:#fff}
+    .shell{padding:20px}
+    .notice{padding:12px 20px;color:#6c604a;background:#fff8e9;font-size:12px;line-height:1.8}
+    .view-switch{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .view-link{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:7px 12px;text-decoration:none;color:#dcecf7}
+    .view-link.active{background:#fff;color:#193a54}
+    .panel{background:#fff;border:1px solid #e0e7ed;border-radius:12px;padding:18px;box-shadow:0 2px 6px rgba(16,39,62,.04);margin-bottom:16px}
+    .search-row{display:grid;grid-template-columns:minmax(220px,1fr) 170px 170px auto auto;gap:10px;align-items:center}
+    .helper-row,.toolbar,.camera-buttons,.pan-buttons,.graph-summary,.canvas-hud{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .chip{display:inline-flex;align-items:center;gap:8px;border:1px solid #bfd3e0;background:#f2f7fb;border-radius:999px;padding:7px 12px;color:#23455d;font-size:12px}
+    .stats{display:flex;gap:22px;flex-wrap:wrap;padding-top:8px}
+    .stats strong{font-size:26px;display:block;color:#146e7d}
+    .muted{color:#667c8e;font-size:12px;line-height:1.8}
+    .content-grid{display:grid;grid-template-columns:minmax(780px,1fr) 340px;gap:16px;align-items:start}
+    .canvas-panel{position:relative}
+    .canvas-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}
+    .canvas-shell{position:relative;border:1px solid #dbe4ec;border-radius:12px;background:#fbfdff;padding:12px}
+    .canvas-stage{position:relative;border:1px solid #d7e4eb;border-radius:10px;background:#f6fbfe;overflow:hidden}
+    #canvasSurface{display:block;width:100%;height:640px;cursor:grab}
+    #canvasSurface.dragging{cursor:grabbing}
+    .hud-top{position:absolute;top:24px;left:24px;right:24px;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
+    .hud-top > *{pointer-events:auto}
+    .hud-box{background:rgba(255,255,255,.95);border:1px solid #d7e4eb;border-radius:10px;padding:10px 12px;box-shadow:0 2px 6px rgba(16,39,62,.08)}
+    .minimap-shell{position:absolute;right:24px;bottom:24px;background:rgba(255,255,255,.96);border:1px solid #d7e4eb;border-radius:12px;padding:10px;box-shadow:0 2px 6px rgba(16,39,62,.08)}
+    #minimapCanvas{display:block;width:220px;height:150px;border-radius:8px;background:#f7fbfe}
+    .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;color:#607687;font-size:12px}
+    .legend-item{display:inline-flex;align-items:center;gap:8px}
+    .legend-line{width:26px;height:0;border-top:2px solid #9cb1c2}
+    .legend-line.active{border-top-color:#0a7488;border-top-width:3px}
+    .tag{display:inline-block;background:#fff0d6;color:#835510;padding:4px 7px;border-radius:4px;font-size:12px;margin-bottom:12px}
+    .detail{line-height:1.9;overflow-wrap:anywhere}
+    .detail pre{white-space:pre-wrap;background:#f2f5f7;padding:12px;font-size:12px}
+    .empty{padding:18px;border:1px dashed #c8d4dc;border-radius:8px;background:#fafcfd;color:#576d7c}
+    .kbd{display:inline-block;padding:1px 6px;border:1px solid #cfd9e1;border-bottom-width:2px;border-radius:5px;background:#fff;color:#4d6676;font-size:11px}
+    @media(max-width:1180px){
+      .content-grid{grid-template-columns:1fr}
+    }
+    @media(max-width:900px){
+      .search-row{grid-template-columns:1fr 1fr}
+      .search-row button:last-child{grid-column:1/-1}
+      #canvasSurface{height:540px}
+    }
+    @media(max-width:640px){
+      header{display:block}
+      .shell{padding:12px}
+      .search-row{grid-template-columns:1fr}
+      .hud-top{position:static;margin-bottom:12px}
+      .minimap-shell{position:static;margin-top:12px}
+      #minimapCanvas{width:100%;height:140px}
+      #canvasSurface{height:460px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>双链 · invest 全结果横向画布</h1>
+      <div class="view-switch">
+        <a class="view-link active" href="./index.html">invest 全结果画布（推荐）</a>
+        <a class="view-link" href="./sequence-v003.html">分页序列旧版</a>
+        <a class="view-link" href="./relation.html">样本企业关系图</a>
+      </div>
+      <p class="muted" style="color:#c7dceb;margin:10px 0 0">专利位于底部同一 ID 顺序轴；企业位于上方，层高仅表示当前筛选结果中的关联专利数，不表示企业实力。</p>
+    </div>
+    <span>本地数据演示 / 04</span>
+  </header>
+  <div class="notice">当前视图只使用完整 invest 数据。关键词与 ID 区间联合筛选后，会把全部命中专利和相关企业放入同一世界坐标画布。页面持续标注“ID 顺序，非真实时间”；不同 ID 的同名专利不合并，多企业共享专利保留全部真实申请关系。</div>
+  <main class="shell">
+    <section class="panel">
+      <h2>检索条件</h2>
+      <div class="search-row">
+        <input id="keywordInput" aria-label="关键词检索" placeholder="输入专利标题关键词，例如：通信、阀门、芯片">
+        <input id="idStartInput" aria-label="ID 起点" placeholder="ID 起点（可空）" inputmode="numeric">
+        <input id="idEndInput" aria-label="ID 终点" placeholder="ID 终点（可空）" inputmode="numeric">
+        <button id="runQuery">检索</button>
+        <button id="cancelQuery">取消</button>
+      </div>
+      <div class="helper-row" style="margin-top:12px">
+        <span id="queryBadge" class="chip">当前条件：关键词 通信</span>
+        <span class="chip">ID 顺序，非真实时间</span>
+        <span class="chip">完整结果，不分页</span>
+        <span class="chip">标题字面包含 + ID 区间交集</span>
+      </div>
+      <p id="queryStatus" class="muted" style="margin:12px 0 0">默认使用已验证可读的关键词“通信”。空条件不会自动触发全量大画布。</p>
+      <div class="stats">
+        <div><strong id="totalPatents">0</strong><span class="muted">匹配专利总数</span></div>
+        <div><strong id="totalCompanies">0</strong><span class="muted">关联企业总数</span></div>
+        <div><strong id="totalRelations">0</strong><span class="muted">申请关系总数</span></div>
+      </div>
+      <p id="dataRange" class="muted" style="margin-top:12px"></p>
+    </section>
+
+    <div class="content-grid">
+      <section class="panel canvas-panel">
+        <div class="canvas-toolbar">
+          <div>
+            <h2>全部结果横向画布</h2>
+            <p class="muted">专利全部放在底部同一基线；企业按当前筛选结果中的去重关联专利数分层，degree 越大位置越高。缩放和平移只改变相机，不会重算布局。</p>
+          </div>
+          <div class="graph-summary">
+            <span id="selectionSummary" class="chip">当前未选择节点</span>
+            <span id="zoomSummary" class="chip">缩放 100%</span>
+          </div>
+        </div>
+
+        <div class="canvas-shell">
+          <div class="canvas-stage">
+            <canvas id="canvasSurface" tabindex="0" aria-label="invest 全结果横向画布"></canvas>
+            <div class="hud-top">
+              <div class="hud-box">
+                <div class="camera-buttons">
+                  <button id="zoomOut">缩小</button>
+                  <button id="zoomIn">放大</button>
+                  <button id="fitView">适配全部</button>
+                  <button id="resetZoom">100%</button>
+                </div>
+                <div class="pan-buttons" style="margin-top:10px">
+                  <button id="panLeft">左移</button>
+                  <button id="panRight">右移</button>
+                  <button id="panUp">上移</button>
+                  <button id="panDown">下移</button>
+                  <button id="clearSelection">清除选择</button>
+                </div>
+              </div>
+              <div class="hud-box">
+                <div id="canvasSummary" class="muted">等待查询结果...</div>
+                <div class="muted">快捷键：<span class="kbd">+</span> / <span class="kbd">-</span> 缩放，<span class="kbd">F</span> 适配，<span class="kbd">0</span> 100%，方向键平移。</div>
+              </div>
+            </div>
+            <div class="minimap-shell">
+              <div class="muted" style="margin-bottom:8px">鹰眼导航</div>
+              <canvas id="minimapCanvas" aria-label="鹰眼导航"></canvas>
+            </div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-line"></span>灰线：全部真实 applyPatent 关系</span>
+            <span class="legend-item"><span class="legend-line active"></span>蓝线：当前选中节点相关关系</span>
+            <span class="legend-item">底部横排：专利 ID 顺序轴，间距不表示时间或 ID 差值</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <h2>关系与来源证据</h2>
+        <span class="tag">完整 invest 数据 · 本地查询</span>
+        <div id="detailPanel" class="detail"></div>
+      </aside>
+    </div>
+  </main>
+  <script src="invest-canvas-layout.js"></script>
+  <script src="invest-canvas-camera.js"></script>
+  <script src="invest-canvas-app.js"></script>
+</body>
+</html>
