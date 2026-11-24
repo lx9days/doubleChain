@@ -47,17 +47,20 @@ const regionPalette=['#0072B2','#E69F00','#009E73','#CC79A7','#D55E00','#332288'
 const provinceNames='北京 天津 河北 山西 内蒙古 辽宁 吉林 黑龙江 上海 江苏 浙江 安徽 福建 江西 山东 河南 湖北 湖南 广东 广西 海南 重庆 四川 贵州 云南 西藏 陕西 甘肃 青海 宁夏 新疆 台湾 香港 澳门'.split(' ');
 const provinceColors=[...regionPalette,'#BB5566','#117733','#DDCC77','#774411','#5555AA','#CC3311','#009988','#EE7733','#33BBEE','#993366','#557722'];
 let mapColorMode='province';
-function provinceColor(name){const index=provinceNames.indexOf(name);return index<0?'#777777':provinceColors[index];}
+const macroRegions=[['华东','上海 江苏 浙江 安徽 福建 江西 山东','#4477AA'],['华南','广东 广西 海南','#228833'],['华中','河南 湖北 湖南','#EE6677'],['华北','北京 天津 河北 山西 内蒙古','#CCBB44'],['西南','重庆 四川 贵州 云南 西藏','#AA3377'],['西北','陕西 甘肃 青海 宁夏 新疆','#66CCEE'],['东北','辽宁 吉林 黑龙江','#AA7744'],['港澳台','香港 澳门 台湾','#888888']];
+function macroRegion(name){return macroRegions.find(r=>r[1].split(' ').includes(name))||['未定位','','#777777'];}
+function provinceColor(name){return macroRegion(name)[2];}
+function macroLegend(){return macroRegions.map(([name,provinces,color])=>`<span class="region-swatch" title="${provinces}"><i style="background:${color}"></i>${name}</span>`).join('');}
 function regionColor(c){return provinceColor(NEV.region(c?.address||'').name);}
 function mapFill(name,n,max){return mapColorMode==='province'?provinceColor(name):n?d3.interpolateBlues(.18+.82*n/max):'#f0f3f5';}
 function drawMapLegend(max){
- $('map-color-legend').innerHTML=mapColorMode==='province'?'<span>省份分类 · 与时间线相同色卡</span>'+provinceNames.map(name=>`<span class="region-swatch"><i style="background:${provinceColor(name)}"></i>${name}</span>`).join(''):`<span>当前筛选范围企业数（家）</span><span class="region-swatch"><i style="background:#f0f3f5"></i>0</span><span style="display:inline-block;width:180px;height:12px;background:linear-gradient(to right,${d3.interpolateBlues(.18)},${d3.interpolateBlues(1)})"></span><span>少 → 多（最大 ${max}）</span><span>时间线仍按省份着色</span>`;
+ $('map-color-legend').innerHTML=mapColorMode==='province'?'<span>大区分类 · 与时间线相同色卡</span>'+macroLegend():`<span>当前筛选范围企业数（家）</span><span class="region-swatch"><i style="background:#f0f3f5"></i>0</span><span style="display:inline-block;width:180px;height:12px;background:linear-gradient(to right,${d3.interpolateBlues(.18)},${d3.interpolateBlues(1)})"></span><span>少 → 多（最大 ${max}）</span><span>时间线仍按大区着色</span>`;
 }
 function drawTimeGraph(){
  const pm=new Map(scene.patents.map(p=>[p.patent_id,p])),cm=new Map(scene.companies.map(c=>[c.company_id,c]));
  const activeEdges=view.edges.filter(e=>!selection||(selection.kind==='company'?e.company_id===selection.id:e.patent_id===selection.id));
  const ps=new Set(activeEdges.map(e=>e.patent_id)),cs=new Set(activeEdges.map(e=>e.company_id));
- document.querySelector('.graph-panel .legend').innerHTML='颜色表示申请主体地址省份；大点为企业，小点为专利。多主体专利按首位主体着色。'+[...new Set(view.companies.map(c=>NEV.region(c.address).name))].map(name=>{const c=view.companies.find(c=>NEV.region(c.address).name===name);return `<span style="display:inline-block;margin:4px 8px"><i style="background:${regionColor(c)}"></i>${esc(name)}</span>`;}).join('');
+ document.querySelector('.graph-panel .legend').innerHTML='颜色表示申请主体所在大区；大点为企业，小点为专利。省份仍可点击探索。'+macroLegend();
  let svg='<g class="time-axis"></g>';
  svg+=view.edges.map(e=>{const p=pm.get(e.patent_id),c=cm.get(e.company_id),on=ps.has(e.patent_id)&&cs.has(e.company_id);return `<line x1="${c.x}" y1="${c.y}" x2="${p.x}" y2="${p.y}" stroke="${on?regionColor(c):'#dbe5e8'}" opacity="${selection?(on?.8:.08):.16}" stroke-width="${selection&&on?2:1}"/>`;}).join('');
  svg+=scene.patents.map(p=>`<g class="node" data-kind="patent" data-id="${p.patent_id}" opacity="${!selection||ps.has(p.patent_id)?1:.15}"><title>${esc(p.title)}\n申请日：${esc(p.application_date||'缺失')}</title><circle cx="${p.x}" cy="${p.y}" r="5" fill="${regionColor(cm.get(p.company_ids[0]))}" stroke="#fff" stroke-width="1"/></g>`).join('');
@@ -195,7 +198,7 @@ for(const [key,title] of [['industry','产业链'],['map','地图']]){
 }
 const evidencePanel=$('detail').closest('section');
 const mapBody=document.createElement('div');mapBody.className='map-body';$('map').before(mapBody);mapBody.append($('map'));
-const mapColorControl=document.createElement('label');mapColorControl.innerHTML='地图颜色 <select id="map-color-mode"><option value="province">省份分类</option><option value="count">企业数量</option></select>';primaryPanels.map.querySelector('.heading').append(mapColorControl);
+const mapColorControl=document.createElement('label');mapColorControl.innerHTML='地图颜色 <select id="map-color-mode"><option value="province">大区分类</option><option value="count">企业数量</option></select>';primaryPanels.map.querySelector('.heading').append(mapColorControl);
 const mapColorLegend=document.createElement('div');mapColorLegend.id='map-color-legend';mapBody.after(mapColorLegend);
 $('map-color-mode').onchange=e=>{mapColorMode=e.target.value;drawMap();};
 const mapDrill=document.createElement('div');mapDrill.id='map-drill';mapDrill.hidden=true;mapBody.append(mapDrill);
@@ -256,7 +259,7 @@ const lensControl=document.createElement('label');lensControl.className='view-li
 lensControl.innerHTML='<input id="timeline-lens" type="checkbox" checked>名称透镜 <input id="lens-radius" aria-label="透镜半径" type="range" min="20" max="100" value="55" title="透镜半径">';
 primaryPanels.timeline.querySelector('.heading').append(lensControl);
 const lensOverlay=document.createElementNS('http://www.w3.org/2000/svg','svg');lensOverlay.id='excentric-lens';lensOverlay.setAttribute('aria-hidden','true');$('graph-wrap').append(lensOverlay);
-let lensPointer=null;
+let lensPointer=null,lensIncludeDimmed=false;
 function clearLens(){lensOverlay.replaceChildren();}
 function renderLens(){
  clearLens();if(!scene?.force||!$('timeline-lens').checked||!lensPointer||drag)return;
@@ -266,6 +269,7 @@ function renderLens(){
  const nodeScale=Math.hypot(matrix.a,matrix.b);
  const hits=[];
  $('graph').querySelectorAll('.node').forEach(el=>{
+ if(!lensIncludeDimmed&&Number(el.getAttribute('opacity')??1)<1)return;
  const circle=el.querySelector('circle');if(!circle)return;
  const pt=new DOMPoint(Number(circle.getAttribute('cx')),Number(circle.getAttribute('cy'))).matrixTransform(matrix);
  const x=pt.x-r.left,y=pt.y-r.top;if(Math.hypot(x-mx,y-my)>radius)return;
@@ -291,7 +295,7 @@ function renderLens(){
  if(shown<hits.length)svg+=`<text x="12" y="${h-12}" font-size="12" fill="#926824">已显示 ${shown}/${hits.length} 个名称，请缩小透镜或放大画布查看其余节点</text>`;
  lensOverlay.innerHTML=svg;
 }
-$('graph').addEventListener('pointermove',e=>{const r=$('graph').getBoundingClientRect();lensPointer=[e.clientX-r.left,e.clientY-r.top];renderLens();});
+$('graph').addEventListener('pointermove',e=>{const r=$('graph').getBoundingClientRect();lensPointer=[e.clientX-r.left,e.clientY-r.top];lensIncludeDimmed=e.ctrlKey;renderLens();});
 $('graph').addEventListener('pointerleave',()=>{lensPointer=null;clearLens();});
 $('graph').addEventListener('pointerdown',clearLens);
 $('graph').addEventListener('wheel',clearLens);
@@ -308,3 +312,7 @@ $('ai-list-models').onclick=async()=>{
  status.textContent=result.models.length?`已加载 ${result.models.length} 个模型`:'没有可用模型';
  }catch(e){status.textContent=e.message;}finally{button.disabled=false;}
 };
+
+window.addEventListener('keydown',e=>{if(e.key==='Control'){lensIncludeDimmed=true;renderLens();}});
+window.addEventListener('keyup',e=>{if(e.key==='Control'){lensIncludeDimmed=false;renderLens();}});
+window.addEventListener('blur',()=>{lensIncludeDimmed=false;clearLens();});
